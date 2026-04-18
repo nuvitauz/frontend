@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from "@/lib/api";
 import { useRouter, usePathname } from 'next/navigation';
@@ -104,6 +104,7 @@ export function Header() {
           fetchProfile(newToken);
         } else {
           setToken(null);
+          setProfile(null);
         }
       }
     }
@@ -121,6 +122,9 @@ export function Header() {
         if (newToken) {
           setToken(newToken);
           fetchCart(newToken);
+        } else {
+          setToken(null);
+          setProfile(null);
         }
       } else {
         console.error("Cart fetch error", err);
@@ -284,7 +288,7 @@ export function Header() {
               </Link>
              
               <Link href="/contact" className="hover:text-green-600 transition-colors cursor-pointer">
-                Kontaktlar
+                Kontakt
               </Link>
             </nav>
           </div>
