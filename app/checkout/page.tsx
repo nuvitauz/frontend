@@ -14,11 +14,11 @@ const REGIONS = [
   "Samarqand", "Sirdaryo", "Surxondaryo", "Toshkent viloyati", "Toshkent shahri"
 ];
 
-const PAYMENTS = [
-  { id: "PAYME", title: "Payme", color: "border-gray-200 hover:border-teal-500", text: "text-teal-600" },
-  { id: "CLICK", title: "Click", color: "border-gray-200 hover:border-blue-500", text: "text-blue-600" },
-  { id: "CASH", title: "Naqd pul", color: "border-gray-200 hover:border-green-500", text: "text-green-600" }
-];
+const PAYMENT_OPTIONS = [
+  { id: "PAYME", title: "Payme", available: false },
+  { id: "CLICK", title: "Click", available: false },
+  { id: "CASH", title: "Naqd pul", available: true },
+] as const;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function CheckoutPage() {
     region: "",
     district: "",
     address: "",
-    paymentType: "PAYME",
+    paymentType: "CASH",
     comment: "",
   });
   
@@ -57,9 +57,6 @@ export default function CheckoutPage() {
 
         const p = profRes.data;
         setProfile(p);
-        
-        // Log for debugging
-        console.log("Cart data:", cartRes.data);
         
         setCart(cartRes.data);
         if (settRes.data && settRes.data.deliverySumm !== undefined) {
@@ -234,21 +231,42 @@ export default function CheckoutPage() {
                    <h2 className="text-xl font-medium text-gray-900">To`lov usuli</h2>
                  </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  {PAYMENTS.map((payment) => {
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {PAYMENT_OPTIONS.map((payment) => {
+                    if (!payment.available) {
+                      return (
+                        <div
+                          key={payment.id}
+                          className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/80 p-5 text-center"
+                          aria-disabled
+                        >
+                          <span className="font-semibold text-gray-400">{payment.title}</span>
+                          <span className="mt-2 text-xs font-medium text-gray-400">Tez orada qo&apos;shiladi</span>
+                        </div>
+                      );
+                    }
                     const isSelected = formData.paymentType === payment.id;
                     return (
-                        <label key={payment.id} className={`cursor-pointer border-2 rounded-2xl p-5 flex flex-col items-center justify-center transition-all ${isSelected ? "border-green-500 bg-green-50/30 ring-4 ring-green-50" : payment.color}`}>
+                      <label
+                        key={payment.id}
+                        className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 p-5 transition-all ${
+                          isSelected
+                            ? "border-green-500 bg-green-50/30 ring-4 ring-green-50"
+                            : "border-gray-200 hover:border-green-400"
+                        }`}
+                      >
                         <input
-                            type="radio"
-                            name="paymentType"
-                            value={payment.id}
-                            checked={isSelected}
-                            onChange={handleChange}
-                            className="hidden"
+                          type="radio"
+                          name="paymentType"
+                          value={payment.id}
+                          checked={isSelected}
+                          onChange={handleChange}
+                          className="sr-only"
                         />
-                        <span className={`font-semibold ${isSelected ? "text-green-700" : "text-gray-700"}`}>{payment.title}</span>
-                        </label>
+                        <span className={`font-semibold ${isSelected ? "text-green-700" : "text-gray-700"}`}>
+                          {payment.title}
+                        </span>
+                      </label>
                     );
                   })}
                 </div>

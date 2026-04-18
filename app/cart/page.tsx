@@ -11,7 +11,8 @@ import { getTelegramWebApp, isTelegramMiniApp } from "@/lib/telegram";
 interface Product {
   productId: string;
   name: string;
-  photoUrl: string;
+  /** API: Prisma `photos` — asosiy rasm odatda birinchi element */
+  photos: string[];
   price: number;
 }
 
@@ -174,9 +175,9 @@ export default function CartPage() {
                   <div className="flex gap-3">
                     {/* Product Image */}
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                      {item.product.photoUrl ? (
+                      {item.product.photos?.[0] ? (
                         <img 
-                          src={`${API_BASE_URL}` + item.product.photoUrl} 
+                          src={`${API_BASE_URL}${item.product.photos[0]}`} 
                           className="w-full h-full object-cover" 
                           alt={item.product.name} 
                         />

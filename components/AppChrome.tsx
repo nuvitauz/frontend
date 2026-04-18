@@ -8,7 +8,11 @@ import NuvitaChat from "@/components/NuvitaChat";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hideChrome = pathname === "/login";
+  const hideChrome =
+    pathname === "/login" ||
+    pathname === "/selected" ||
+    pathname === "/cart" ||
+    pathname === "/checkout";
 
   return (
     <>
