@@ -10,9 +10,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideChrome =
     pathname === "/login" ||
+    pathname === "/register" ||
     pathname === "/selected" ||
     pathname === "/cart" ||
-    pathname === "/checkout";
+    pathname === "/checkout" ||
+    pathname === "/orders" ||
+    pathname.startsWith("/orders/");
 
   return (
     <>

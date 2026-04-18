@@ -135,7 +135,7 @@ export default function MyOrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-14 z-40">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -293,6 +293,16 @@ export default function MyOrdersPage() {
                           {(order.summ + order.deliverySumm).toLocaleString()} so'm
                         </div>
                       </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 py-3 text-sm font-semibold text-green-700 transition hover:bg-green-100"
+                      >
+                        Tarkibni ko&apos;rish
+                        <ChevronRight size={18} />
+                      </Link>
                     </div>
                   </div>
 
