@@ -9,8 +9,7 @@ import Link from "next/link";
 interface Banner {
   id: number;
   image: string;
-  title: string | null;
-  link: string | null;
+  link: string;
   order: number;
 }
 
@@ -119,7 +118,7 @@ export default function BannerCarousel() {
     >
       <img
         src={`${API_BASE_URL}${banner.image}`}
-        alt={banner.title || `Banner ${index + 1}`}
+        alt={`Banner ${index + 1}`}
         className="w-full h-full object-cover"
         loading={index === 0 ? "eager" : "lazy"}
       />

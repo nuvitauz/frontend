@@ -13,7 +13,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Grid3X3,
-  Heart
+  Heart,
+  Star,
+  MessageSquare
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -23,7 +25,6 @@ import BannerCarousel from "@/components/BannerCarousel";
 interface Category {
   id: number;
   name: string;
-  description: string;
   isActive: boolean;
 }
 
@@ -45,6 +46,37 @@ interface CartItem {
   productCount: number;
 }
 
+// Yulduzli reyting — 5tadan mahsulot bahosini chiroyli ko'rsatadi
+function StarRating({ value, size = 12 }: { value: number; size?: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => {
+        const filled = value >= i;
+        const half = !filled && value >= i - 0.5;
+        return (
+          <div key={i} className="relative" style={{ width: size, height: size }}>
+            <Star
+              size={size}
+              className="absolute inset-0 text-gray-200 fill-gray-200"
+            />
+            {(filled || half) && (
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: filled ? "100%" : "50%" }}
+              >
+                <Star
+                  size={size}
+                  className="text-amber-400 fill-amber-400"
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Product Card Component
 function ProductCard({ 
   product, 
@@ -52,7 +84,10 @@ function ProductCard({
   onAddToCart, 
   onUpdateCount,
   isSaved,
-  onToggleSave 
+  onToggleSave,
+  categoryName,
+  rating,
+  reviewCount,
 }: { 
   product: Product; 
   cartItem?: CartItem; 
@@ -60,24 +95,38 @@ function ProductCard({
   onUpdateCount: (cartItemId: number, action: "increment" | "decrement") => void;
   isSaved?: boolean;
   onToggleSave?: (productId: string) => void;
+  categoryName?: string;
+  rating?: number;
+  reviewCount?: number;
 }) {
+  const hasReviews = (reviewCount ?? 0) > 0;
+
   return (
-    <div className="bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 group flex flex-col h-full min-w-[160px] sm:min-w-[200px]">
+    <div className="bg-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group flex flex-col h-full">
+      {/* Rasm qismi — faqat heart va reyting badge */}
       <Link href={`/${encodeURIComponent(product.name)}`} className="block">
-        <div className="relative h-40 sm:h-48 overflow-hidden bg-gray-50">
+        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           {product.photos && product.photos.length > 0 ? (
             <img 
               src={`${API_BASE_URL}` + product.photos[0]} 
               alt={product.name} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">Rasm yo'q</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">Rasm yo'q</div>
           )}
-          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full font-bold text-green-700 text-xs sm:text-sm shadow-sm">
-            {product.price?.toLocaleString()} so'm
-          </div>
-          {/* Heart Button */}
+
+          {/* Reyting badge — chap yuqorida (agar sharhlar bo'lsa) */}
+          {hasReviews && (
+            <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+              <Star size={11} className="text-amber-400 fill-amber-400" />
+              <span className="text-[11px] font-bold text-gray-900 leading-none">
+                {(rating ?? 0).toFixed(1)}
+              </span>
+            </div>
+          )}
+
+          {/* Heart Button — o'ng yuqorida */}
           {onToggleSave && (
             <button
               onClick={(e) => {
@@ -85,10 +134,11 @@ function ProductCard({
                 e.stopPropagation();
                 onToggleSave(product.productId);
               }}
-              className="absolute top-2 left-2 p-2 bg-white/95 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
+              className="absolute top-2 right-2 p-1.5 bg-white/95 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
+              aria-label="Saqlash"
             >
               <Heart 
-                size={18} 
+                size={15} 
                 className={isSaved ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'} 
               />
             </button>
@@ -96,36 +146,69 @@ function ProductCard({
         </div>
       </Link>
 
-      <div className="p-3 sm:p-4 flex-1 flex flex-col">
-        <Link href={`/${encodeURIComponent(product.name)}`}>
-          <h4 className="text-sm sm:text-base font-bold text-gray-900 mb-1.5 line-clamp-2 hover:text-green-600 transition-colors cursor-pointer">{product.name}</h4>
-        </Link>
-        <p className="text-xs text-gray-500 mb-3 line-clamp-2 flex-1 hidden sm:block">{product.ingredients}</p>
+      {/* Matn qismi */}
+      <div className="p-3 flex-1 flex flex-col">
+        {/* Kategoriya nomi — kichik pill */}
+        {categoryName && (
+          <div className="mb-1.5">
+            <span className="inline-block text-[10px] font-semibold uppercase tracking-wide text-green-700 bg-green-50 px-2 py-0.5 rounded-full truncate max-w-full">
+              {categoryName}
+            </span>
+          </div>
+        )}
 
+        {/* Nom */}
+        <Link href={`/${encodeURIComponent(product.name)}`}>
+          <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2 hover:text-green-600 transition-colors cursor-pointer leading-tight min-h-[2.5rem]">
+            {product.name}
+          </h4>
+        </Link>
+
+        {/* Reyting va sharhlar qatori */}
+        <div className="flex items-center gap-1.5 mb-2 min-h-[18px]">
+          <StarRating value={rating ?? 0} size={12} />
+          {hasReviews && (
+            <span className="text-[11px] text-gray-500 font-medium">
+              ({reviewCount})
+            </span>
+          )}
+        </div>
+
+        {/* Narx */}
+        <div className="mb-3">
+          <div className="text-base sm:text-lg font-extrabold text-gray-900 leading-none">
+            {product.price?.toLocaleString()}
+            <span className="text-xs font-semibold text-gray-500 ml-1">so'm</span>
+          </div>
+        </div>
+
+        {/* CTA — Savatga yoki +/- */}
         <div className="mt-auto">
           {cartItem ? (
             <div className="bg-green-50 border border-green-200 rounded-xl flex items-center justify-between px-1.5 py-1 h-10">
               <button
                 onClick={() => onUpdateCount(cartItem.id, "decrement")}
-                className="bg-white p-1.5 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                className="bg-white p-1.5 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm"
+                aria-label="Kamaytirish"
               >
-                <Minus size={16} />
+                <Minus size={15} />
               </button>
-              <span className="font-bold text-sm px-2">{cartItem.productCount}</span>
+              <span className="font-bold text-sm text-gray-900">{cartItem.productCount}</span>
               <button
                 onClick={() => onUpdateCount(cartItem.id, "increment")}
-                className="bg-green-600 p-1.5 rounded-lg text-white hover:bg-green-700 transition"
+                className="bg-green-600 p-1.5 rounded-lg text-white hover:bg-green-700 transition shadow-sm"
+                aria-label="Ko'paytirish"
               >
-                <Plus size={16} />
+                <Plus size={15} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => onAddToCart(product.productId)}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5 shadow-sm"
             >
-              <ShoppingCart size={16} />
-              <span className="hidden sm:inline">Savatga</span>
+              <ShoppingCart size={15} />
+              <span>Savatga</span>
             </button>
           )}
         </div>
@@ -142,7 +225,8 @@ function CategoryRow({
   onAddToCart, 
   onUpdateCount,
   savedIds,
-  onToggleSave 
+  onToggleSave,
+  ratings,
 }: { 
   category: Category; 
   products: Product[]; 
@@ -151,6 +235,7 @@ function CategoryRow({
   onUpdateCount: (cartItemId: number, action: "increment" | "decrement") => void;
   savedIds: string[];
   onToggleSave: (productId: string) => void;
+  ratings: Record<string, { average: number; count: number }>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -219,8 +304,11 @@ function CategoryRow({
         >
           {products.map(product => {
             const cartItem = cartItems.find(item => item.productId === product.productId);
+            const r = ratings[product.productId];
+            // "Boshqa mahsulotlar" (id=0) fake kategoriya — kartochkada ko'rsatmaymiz
+            const realCategoryName = category.id !== 0 ? category.name : undefined;
             return (
-              <div key={product.id} className="flex-shrink-0 w-[160px] sm:w-[200px]">
+              <div key={product.id} className="flex-shrink-0 w-[180px] sm:w-[220px]">
                 <ProductCard 
                   product={product} 
                   cartItem={cartItem} 
@@ -228,6 +316,9 @@ function CategoryRow({
                   onUpdateCount={onUpdateCount}
                   isSaved={savedIds.includes(product.productId)}
                   onToggleSave={onToggleSave}
+                  categoryName={realCategoryName}
+                  rating={r?.average}
+                  reviewCount={r?.count}
                 />
               </div>
             );
@@ -253,6 +344,7 @@ function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [ratings, setRatings] = useState<Record<string, { average: number; count: number }>>({});
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
@@ -315,14 +407,16 @@ function ProductList() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodRes, catRes] = await Promise.all([
+        const [prodRes, catRes, ratingsRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/admin/product`),
-          axios.get(`${API_BASE_URL}/admin/category`)
+          axios.get(`${API_BASE_URL}/admin/category`),
+          axios.get(`${API_BASE_URL}/score/ratings`).catch(() => ({ data: {} })),
         ]);
         const activeProducts = prodRes.data.filter((p: any) => p.active !== false);
         const activeCategories = catRes.data.filter((c: any) => c.isActive !== false);
         setProducts(activeProducts);
         setCategories(activeCategories);
+        setRatings(ratingsRes.data || {});
       } catch (err) {
         console.error("Error fetching data", err);
       } finally {
@@ -451,6 +545,8 @@ function ProductList() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {filteredProducts.map(product => {
                   const cartItem = cartItems.find(item => item.productId === product.productId);
+                  const cat = categories.find(c => c.id === product.categoryId);
+                  const r = ratings[product.productId];
                   return (
                     <ProductCard 
                       key={product.id}
@@ -460,6 +556,9 @@ function ProductList() {
                       onUpdateCount={updateItemCount}
                       isSaved={savedIds.includes(product.productId)}
                       onToggleSave={toggleSave}
+                      categoryName={cat?.name}
+                      rating={r?.average}
+                      reviewCount={r?.count}
                     />
                   );
                 })}
@@ -487,6 +586,7 @@ function ProductList() {
                       onUpdateCount={updateItemCount}
                       savedIds={savedIds}
                       onToggleSave={toggleSave}
+                      ratings={ratings}
                     />
                   );
                 })}
@@ -494,13 +594,14 @@ function ProductList() {
                 {/* Products without category */}
                 {products.filter(p => !categories.some(c => c.id === p.categoryId)).length > 0 && (
                   <CategoryRow 
-                    category={{ id: 0, name: "Boshqa mahsulotlar", description: "", isActive: true }}
+                    category={{ id: 0, name: "Boshqa mahsulotlar", isActive: true }}
                     products={products.filter(p => !categories.some(c => c.id === p.categoryId))}
                     cartItems={cartItems}
                     onAddToCart={addToCart}
                     onUpdateCount={updateItemCount}
                     savedIds={savedIds}
                     onToggleSave={toggleSave}
+                    ratings={ratings}
                   />
                 )}
               </>

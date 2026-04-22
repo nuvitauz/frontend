@@ -120,15 +120,46 @@ export default function NuvitaChat() {
         const aiResponse = await response.json();
         setMessages((prev) => [...prev, aiResponse]);
       } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "ASSISTANT",
-            content: "Kechirasiz, xatolik yuz berdi. Qayta urinib ko'ring.",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
+        let serverMessage = "";
+        try {
+          const data = await response.json();
+          serverMessage =
+            typeof data?.message === "string"
+              ? data.message
+              : Array.isArray(data?.message)
+              ? data.message.join(", ")
+              : "";
+        } catch {
+          // ignore
+        }
+
+        if (response.status === 404) {
+          localStorage.removeItem(CHAT_SESSION_KEY);
+          setSessionId(null);
+          await createSession();
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: "ASSISTANT",
+              content:
+                "Sessiya muddati tugagan. Yangi suhbat boshlandi — savolingizni qayta yuboring.",
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: "ASSISTANT",
+              content:
+                serverMessage ||
+                "Kechirasiz, xatolik yuz berdi. Qayta urinib ko'ring.",
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        }
       }
     } catch (error) {
       console.error("Failed to send message:", error);

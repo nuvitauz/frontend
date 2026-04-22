@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import FloatingCart from "@/components/FloatingCart";
 import NuvitaChat from "@/components/NuvitaChat";
+import { MaintenanceGate } from "@/components/MaintenanceGate";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,12 +19,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/orders/");
 
   return (
-    <>
+    <MaintenanceGate>
       {!hideChrome && <Header />}
       <main className="flex-1">{children}</main>
       {!hideChrome && <FloatingCart />}
       {!hideChrome && <NuvitaChat />}
       {!hideChrome && <Footer />}
-    </>
+    </MaintenanceGate>
   );
 }
