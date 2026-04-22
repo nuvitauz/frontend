@@ -399,15 +399,17 @@ export function Header() {
                       </Link>
                     </div>
                     
-                    <div className="p-2 border-t border-gray-100">
-                      <button 
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-                      >
-                        <LogOut size={18} />
-                        <span className="font-medium text-sm">Chiqish</span>
-                      </button>
-                    </div>
+                    {!isTg && (
+                      <div className="p-2 border-t border-gray-100">
+                        <button 
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                        >
+                          <LogOut size={18} />
+                          <span className="font-medium text-sm">Chiqish</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

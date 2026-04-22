@@ -45,12 +45,35 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [isTg, setIsTg] = useState(false);
+
+  // Telegram Mini App auto-login via initData
+  const authenticateWithTelegram = async (): Promise<string | null> => {
+    try {
+      const { getTelegramInitData } = await import("@/lib/telegram");
+      const initData = getTelegramInitData();
+      if (!initData) return null;
+      const res = await axios.post(`${API_BASE_URL}/auth/telegram`, { initData });
+      const { accessToken, refreshToken, user } = res.data;
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("tgUserData", JSON.stringify(user));
+      if (user?.photoUrl) setTgPhotoUrl(user.photoUrl);
+      return accessToken;
+    } catch (e) {
+      console.error("TG auto-auth error:", e);
+      return null;
+    }
+  };
 
   useEffect(() => {
     let inTg = false;
+    let cancelled = false;
     
-    if (typeof window !== 'undefined') {
+    const init = async () => {
+      if (typeof window === 'undefined') return;
       inTg = isTelegramMiniApp();
+      setIsTg(inTg);
 
       if (inTg) {
         const webApp = getTelegramWebApp();
@@ -80,16 +103,28 @@ export default function ProfilePage() {
         }
       }
       
-      const t = localStorage.getItem("accessToken");
+      let t = localStorage.getItem("accessToken");
+      
+      // In Mini App: if no token yet, try auto-login via initData
+      if (!t && inTg) {
+        t = await authenticateWithTelegram();
+      }
+
+      if (cancelled) return;
+
       if (!t) {
-        router.push("/login");
+        if (!inTg) router.push("/login");
+        else setLoading(false);
         return;
       }
       setToken(t);
       fetchData(t);
-    }
+    };
+
+    init();
 
     return () => {
+      cancelled = true;
       if (inTg && typeof window !== 'undefined') {
         const webApp = getTelegramWebApp();
         webApp?.BackButton?.hide();
@@ -367,16 +402,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Logout */}
-        <div className="pt-4 flex justify-center">
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-6 py-3 text-red-500 font-medium bg-red-50 hover:bg-red-100 rounded-2xl transition-colors"
-          >
-            <LogOut size={18} />
-            Akkauntdan chiqish
-          </button>
-        </div>
+        {/* Logout — hidden inside Telegram Mini App */}
+        {!isTg && (
+          <div className="pt-4 flex justify-center">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-6 py-3 text-red-500 font-medium bg-red-50 hover:bg-red-100 rounded-2xl transition-colors"
+            >
+              <LogOut size={18} />
+              Akkauntdan chiqish
+            </button>
+          </div>
+        )}
 
       </div>
     </div>
