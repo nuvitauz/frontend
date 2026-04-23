@@ -76,7 +76,7 @@ function RegisterForm() {
             console.error("Token validation error:", err);
             setTokenError(
               err.response?.data?.message ||
-                "Havola yaroqsiz yoki muddati tugagan. Iltimos, botdan qaytadan urinib ko'ring.",
+                "Havola topilmadi yoki muddati tugagan. Telegramda /parol bosing yoki saytdagi Profildan qayta urinib ko'ring.",
             );
           }
 
@@ -168,7 +168,9 @@ function RegisterForm() {
           setError("Bu raqam orqali allaqachon ro'yxatdan o'tilgan.");
         }
       } else if (err.response?.status === 404) {
-        setError("Havola yaroqsiz yoki muddati tugagan.");
+        setError(
+          "Havola yaroqsiz. Botda /parol bosing yoki yangi havola oling.",
+        );
       } else {
         setError("Tizimda xatolik yuz berdi. Iltimos qayta urinib ko'ring.");
       }

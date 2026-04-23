@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -58,6 +59,7 @@ export default function NuvitaChat() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [hasAuth, setHasAuth] = useState(false);
 
   const SUGGESTIONS = useMemo(
     () => [t("chat.suggestions.1"), t("chat.suggestions.2"), t("chat.suggestions.3")],
@@ -81,18 +83,45 @@ export default function NuvitaChat() {
     return h;
   };
 
+  const loadSession = useCallback(async (sid: string) => {
+    if (!localStorage.getItem("accessToken")) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat/session/${sid}`, {
+        headers: authHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages || []);
+      } else {
+        localStorage.removeItem(CHAT_SESSION_KEY);
+        setSessionId(null);
+      }
+    } catch (error) {
+      console.error("Failed to load session:", error);
+    }
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Load existing session from localStorage
   useEffect(() => {
+    setHasAuth(!!localStorage.getItem("accessToken"));
+  }, [isOpen]);
+
+  // Load existing session from localStorage (faqat login bo'lsa)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!localStorage.getItem("accessToken")) {
+      localStorage.removeItem(CHAT_SESSION_KEY);
+      return;
+    }
     const savedSessionId = localStorage.getItem(CHAT_SESSION_KEY);
     if (savedSessionId) {
       setSessionId(savedSessionId);
       loadSession(savedSessionId);
     }
-  }, []);
+  }, [loadSession]);
 
   // Lock body scroll when open on mobile
   useEffect(() => {
@@ -124,22 +153,8 @@ export default function NuvitaChat() {
     ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
   }, [inputValue]);
 
-  const loadSession = async (sid: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/session/${sid}`);
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages || []);
-      } else {
-        localStorage.removeItem(CHAT_SESSION_KEY);
-        setSessionId(null);
-      }
-    } catch (error) {
-      console.error("Failed to load session:", error);
-    }
-  };
-
   const createSession = async () => {
+    if (!localStorage.getItem("accessToken")) return;
     setIsInitializing(true);
     try {
       const response = await fetch(`${API_BASE_URL}/chat/session`, {
@@ -147,6 +162,12 @@ export default function NuvitaChat() {
         headers: authHeaders(),
         body: JSON.stringify({}),
       });
+      if (response.status === 401) {
+        localStorage.removeItem(CHAT_SESSION_KEY);
+        setSessionId(null);
+        setHasAuth(false);
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         setSessionId(data.sessionId);
@@ -169,6 +190,9 @@ export default function NuvitaChat() {
 
   const handleOpen = async () => {
     setIsOpen(true);
+    const authed = !!localStorage.getItem("accessToken");
+    setHasAuth(authed);
+    if (!authed) return;
     if (!sessionId) await createSession();
     setTimeout(() => textareaRef.current?.focus(), 250);
   };
@@ -176,6 +200,10 @@ export default function NuvitaChat() {
   const sendText = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || !sessionId || isLoading) return;
+    if (!localStorage.getItem("accessToken")) {
+      setHasAuth(false);
+      return;
+    }
 
     setInputValue("");
 
@@ -199,6 +227,21 @@ export default function NuvitaChat() {
         const aiResponse = await response.json();
         setMessages((prev) => [...prev, aiResponse]);
       } else {
+        if (response.status === 401) {
+          setHasAuth(false);
+          localStorage.removeItem(CHAT_SESSION_KEY);
+          setSessionId(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: "ASSISTANT",
+              content: t("chat.requireLogin"),
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+          return;
+        }
         let serverMessage = "";
         try {
           const data = await response.json();
@@ -222,7 +265,7 @@ export default function NuvitaChat() {
               id: Date.now() + 1,
               role: "ASSISTANT",
               content:
-                "Sessiya muddati tugagan. Yangi suhbat boshlandi — savolingizni qayta yuboring.",
+                "Sessiya topilmadi. Yangi suhbat boshlandi — savolingizni qayta yuboring.",
               createdAt: new Date().toISOString(),
             },
           ]);
@@ -266,6 +309,10 @@ export default function NuvitaChat() {
   };
 
   const startNewChat = async () => {
+    if (!localStorage.getItem("accessToken")) {
+      setHasAuth(false);
+      return;
+    }
     localStorage.removeItem(CHAT_SESSION_KEY);
     setSessionId(null);
     setMessages([]);
@@ -274,10 +321,10 @@ export default function NuvitaChat() {
 
   // Show suggestions only when chat has just the greeting
   const showSuggestions = useMemo(() => {
-    if (isLoading || isInitializing) return false;
+    if (!hasAuth || isLoading || isInitializing) return false;
     const userMsgCount = messages.filter((m) => m.role === "USER").length;
     return userMsgCount === 0;
-  }, [messages, isLoading, isInitializing]);
+  }, [hasAuth, messages, isLoading, isInitializing]);
 
   return (
     <>
@@ -390,7 +437,20 @@ export default function NuvitaChat() {
           className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-3 bg-gradient-to-b from-emerald-50/30 via-white to-white"
           style={{ scrollbarWidth: "thin" }}
         >
-          {isInitializing && messages.length === 0 ? (
+          {!hasAuth ? (
+            <div className="flex flex-col items-center justify-center min-h-[200px] px-4 text-center gap-4">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {t("chat.requireLogin")}
+              </p>
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-semibold px-5 py-2.5 shadow-md hover:from-emerald-600 hover:to-teal-600 transition-colors"
+              >
+                {t("nav.login")}
+              </Link>
+            </div>
+          ) : isInitializing && messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
               <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
                 <Loader2 size={26} className="animate-spin text-emerald-500" />
@@ -456,53 +516,57 @@ export default function NuvitaChat() {
         </div>
 
         {/* ─── Input ─── */}
-        <div
-          className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur-sm px-3 sm:px-4 py-3"
-          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-        >
-          <div className="flex items-end gap-2">
-            <div className="flex-1 bg-gray-50 border border-gray-200 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-500/10 rounded-2xl px-3.5 py-2.5 transition-all">
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t("chat.placeholder")}
-                className="w-full bg-transparent resize-none outline-none text-sm text-gray-900 placeholder:text-gray-400 leading-relaxed max-h-[120px]"
-                disabled={isLoading || isInitializing}
-              />
-            </div>
-            <button
-              onClick={sendMessage}
-              disabled={!inputValue.trim() || isLoading || isInitializing}
-              className="group relative h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-200 hover:shadow-lg hover:shadow-emerald-300 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center overflow-hidden"
-              aria-label={t("chat.send")}
-            >
-              <span
-                className="absolute inset-0 opacity-0 group-enabled:group-hover:opacity-100 transition-opacity"
-                style={{
-                  background:
-                    "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)",
-                  backgroundSize: "200% 100%",
-                  animation: "nvChatShine 1.6s ease-in-out infinite",
-                }}
-              />
-              {isLoading ? (
-                <Loader2 size={18} className="relative z-10 animate-spin" />
-              ) : (
-                <Send
-                  size={17}
-                  className="relative z-10 group-enabled:group-hover:translate-x-0.5 transition-transform"
+        {hasAuth && (
+          <div
+            className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur-sm px-3 sm:px-4 py-3"
+            style={{
+              paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
+            }}
+          >
+            <div className="flex items-end gap-2">
+              <div className="flex-1 bg-gray-50 border border-gray-200 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-500/10 rounded-2xl px-3.5 py-2.5 transition-all">
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t("chat.placeholder")}
+                  className="w-full bg-transparent resize-none outline-none text-sm text-gray-900 placeholder:text-gray-400 leading-relaxed max-h-[120px]"
+                  disabled={isLoading || isInitializing}
                 />
-              )}
-            </button>
+              </div>
+              <button
+                onClick={sendMessage}
+                disabled={!inputValue.trim() || isLoading || isInitializing}
+                className="group relative h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-200 hover:shadow-lg hover:shadow-emerald-300 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center overflow-hidden"
+                aria-label={t("chat.send")}
+              >
+                <span
+                  className="absolute inset-0 opacity-0 group-enabled:group-hover:opacity-100 transition-opacity"
+                  style={{
+                    background:
+                      "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)",
+                    backgroundSize: "200% 100%",
+                    animation: "nvChatShine 1.6s ease-in-out infinite",
+                  }}
+                />
+                {isLoading ? (
+                  <Loader2 size={18} className="relative z-10 animate-spin" />
+                ) : (
+                  <Send
+                    size={17}
+                    className="relative z-10 group-enabled:group-hover:translate-x-0.5 transition-transform"
+                  />
+                )}
+              </button>
+            </div>
+            <p className="mt-1.5 text-[10px] text-gray-400 text-center px-1 leading-snug">
+              AI xatoga yo&apos;l qo&apos;yishi mumkin. Muhim sog&apos;liq
+              masalalarida shifokorga murojaat qiling.
+            </p>
           </div>
-          <p className="mt-1.5 text-[10px] text-gray-400 text-center px-1 leading-snug">
-            AI xatoga yo&apos;l qo&apos;yishi mumkin. Muhim sog&apos;liq masalalarida
-            shifokorga murojaat qiling.
-          </p>
-        </div>
+        )}
       </div>
 
       <style jsx global>{`

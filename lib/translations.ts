@@ -171,6 +171,7 @@ export const translations = {
     "chat.suggestions.2": "Sochni mustahkamlovchi mahsulotlar",
     "chat.suggestions.3": "Bolalar uchun vitaminlar",
     "chat.openChat": "Chatni ochish",
+    "chat.requireLogin": "Nuvita AI dan foydalanish uchun avval tizimga kiring (telefon + parol yoki Telegram).",
 
     // Categories section
     "categories.title": "Kategoriyalar",
@@ -342,6 +343,7 @@ export const translations = {
     "chat.suggestions.2": "Средства для укрепления волос",
     "chat.suggestions.3": "Витамины для детей",
     "chat.openChat": "Открыть чат",
+    "chat.requireLogin": "Войдите в аккаунт, чтобы пользоваться Nuvita AI (телефон + пароль или Telegram).",
 
     "categories.title": "Категории",
     "categories.all": "Все товары",
@@ -511,6 +513,7 @@ export const translations = {
     "chat.suggestions.2": "Hair strengthening products",
     "chat.suggestions.3": "Vitamins for children",
     "chat.openChat": "Open chat",
+    "chat.requireLogin": "Sign in to use Nuvita AI (phone + password or Telegram).",
 
     "categories.title": "Categories",
     "categories.all": "All products",

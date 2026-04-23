@@ -1134,7 +1134,11 @@ function ChatsTab({
                 )}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {s._count.messages} ta xabar • Boshlandi: {formatDateTime(s.createdAt)}
+                {s._count.messages} ta xabar
+                {s.number ? ` • ${s.number}` : ""} • {formatDateTime(s.createdAt)}
+                {s.updatedAt && s.updatedAt !== s.createdAt
+                  ? ` — oxirgi: ${formatDateTime(s.updatedAt)}`
+                  : ""}
               </p>
             </div>
             <MessageSquare className="w-4 h-4 text-gray-400 shrink-0" />
