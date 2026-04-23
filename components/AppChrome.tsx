@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import FloatingCart from "@/components/FloatingCart";
 import NuvitaChat from "@/components/NuvitaChat";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
+import { I18nProvider } from "@/lib/i18n";
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -19,12 +20,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/orders/");
 
   return (
-    <MaintenanceGate>
-      {!hideChrome && <Header />}
-      <main className="flex-1">{children}</main>
-      {!hideChrome && <FloatingCart />}
-      {!hideChrome && <NuvitaChat />}
-      {!hideChrome && <Footer />}
-    </MaintenanceGate>
+    <I18nProvider>
+      <MaintenanceGate>
+        {!hideChrome && <Header />}
+        <main className="flex-1">{children}</main>
+        {!hideChrome && <FloatingCart />}
+        {!hideChrome && <NuvitaChat />}
+        {!hideChrome && <Footer />}
+      </MaintenanceGate>
+    </I18nProvider>
   );
 }

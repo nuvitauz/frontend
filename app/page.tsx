@@ -15,16 +15,20 @@ import {
   Grid3X3,
   Heart,
   Star,
-  MessageSquare
+  MessageSquare,
+  LogIn,
+  Sparkles
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ContactPage from "@/app/contact/page";
 import BannerCarousel from "@/components/BannerCarousel";
+import { useI18n } from "@/lib/i18n";
 
 interface Category {
   id: number;
   name: string;
+  displayName?: string;
   isActive: boolean;
 }
 
@@ -32,6 +36,7 @@ interface Product {
   id: number;
   productId: string;
   name: string;
+  displayName?: string;
   ingredients: string;
   usage: string;
   photos: string[];
@@ -100,6 +105,8 @@ function ProductCard({
   reviewCount?: number;
 }) {
   const hasReviews = (reviewCount ?? 0) > 0;
+  const { t } = useI18n();
+  const productTitle = product.displayName || product.name;
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group flex flex-col h-full">
@@ -109,11 +116,11 @@ function ProductCard({
           {product.photos && product.photos.length > 0 ? (
             <img 
               src={`${API_BASE_URL}` + product.photos[0]} 
-              alt={product.name} 
+              alt={productTitle} 
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">Rasm yo'q</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">—</div>
           )}
 
           {/* Reyting badge — chap yuqorida (agar sharhlar bo'lsa) */}
@@ -135,7 +142,7 @@ function ProductCard({
                 onToggleSave(product.productId);
               }}
               className="absolute top-2 right-2 p-1.5 bg-white/95 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
-              aria-label="Saqlash"
+              aria-label={t("product.save")}
             >
               <Heart 
                 size={15} 
@@ -160,7 +167,7 @@ function ProductCard({
         {/* Nom */}
         <Link href={`/${encodeURIComponent(product.name)}`}>
           <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2 hover:text-green-600 transition-colors cursor-pointer leading-tight min-h-[2.5rem]">
-            {product.name}
+            {productTitle}
           </h4>
         </Link>
 
@@ -178,7 +185,7 @@ function ProductCard({
         <div className="mb-3">
           <div className="text-base sm:text-lg font-extrabold text-gray-900 leading-none">
             {product.price?.toLocaleString()}
-            <span className="text-xs font-semibold text-gray-500 ml-1">so'm</span>
+            <span className="text-xs font-semibold text-gray-500 ml-1">{t("common.uzs")}</span>
           </div>
         </div>
 
@@ -189,7 +196,7 @@ function ProductCard({
               <button
                 onClick={() => onUpdateCount(cartItem.id, "decrement")}
                 className="bg-white p-1.5 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm"
-                aria-label="Kamaytirish"
+                aria-label="-"
               >
                 <Minus size={15} />
               </button>
@@ -197,7 +204,7 @@ function ProductCard({
               <button
                 onClick={() => onUpdateCount(cartItem.id, "increment")}
                 className="bg-green-600 p-1.5 rounded-lg text-white hover:bg-green-700 transition shadow-sm"
-                aria-label="Ko'paytirish"
+                aria-label="+"
               >
                 <Plus size={15} />
               </button>
@@ -208,7 +215,7 @@ function ProductCard({
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5 shadow-sm"
             >
               <ShoppingCart size={15} />
-              <span>Savatga</span>
+              <span>{t("product.addToCart")}</span>
             </button>
           )}
         </div>
@@ -237,6 +244,7 @@ function CategoryRow({
   onToggleSave: (productId: string) => void;
   ratings: Record<string, { average: number; count: number }>;
 }) {
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -271,14 +279,14 @@ function CategoryRow({
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="w-1 h-8 bg-green-500 rounded-full"></div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{category.name}</h3>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{category.displayName || category.name}</h3>
           <span className="text-sm text-gray-400 font-medium">({products.length})</span>
         </div>
         <Link 
           href={`/catalog?category=${category.id}`}
           className="flex items-center gap-1.5 text-green-600 hover:text-green-700 font-semibold text-sm transition-colors group"
         >
-          Hammasi
+          {t("product.seeAll")}
           <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
@@ -306,9 +314,9 @@ function CategoryRow({
             const cartItem = cartItems.find(item => item.productId === product.productId);
             const r = ratings[product.productId];
             // "Boshqa mahsulotlar" (id=0) fake kategoriya — kartochkada ko'rsatmaymiz
-            const realCategoryName = category.id !== 0 ? category.name : undefined;
+            const realCategoryName = category.id !== 0 ? (category.displayName || category.name) : undefined;
             return (
-              <div key={product.id} className="flex-shrink-0 w-[180px] sm:w-[220px]">
+              <div key={product.id} className="flex-shrink-0 w-[calc(50vw-24px)] min-w-[145px] max-w-[180px] sm:w-[220px] sm:max-w-none">
                 <ProductCard 
                   product={product} 
                   cartItem={cartItem} 
@@ -340,14 +348,22 @@ function CategoryRow({
 }
 
 function ProductList() {
+  const { t } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, { average: number; count: number }>>({});
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsLoggedIn(!!localStorage.getItem("accessToken"));
+    }
+  }, []);
 
   const fetchCartOptions = async () => {
     const token = localStorage.getItem("accessToken");
@@ -384,7 +400,6 @@ function ProductList() {
   const toggleSave = async (productId: string) => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      alert("Iltimos, avval tizimga kiring!");
       window.location.href = "/login";
       return;
     }
@@ -432,7 +447,6 @@ function ProductList() {
   const addToCart = async (productId: string) => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      alert("Iltimos, avval tizimga kiring!");
       window.location.href = "/login";
       return;
     }
@@ -448,10 +462,7 @@ function ProductList() {
       console.error(err);
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         localStorage.removeItem("accessToken");
-        alert("Sessiya vaqti tugagan yoki xatolik. Iltimos qayta tizimga kiring.");
         window.location.href = "/login";
-      } else {
-        alert("Xatolik yuz berdi yoki avtorizatsiyadan o`tmagansiz.");
       }
     }
   };
@@ -469,11 +480,14 @@ function ProductList() {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const q = searchQuery.toLowerCase();
+    const n1 = (p.displayName || p.name || "").toLowerCase();
+    const n2 = (p.name || "").toLowerCase();
+    return n1.includes(q) || n2.includes(q);
+  });
 
-  if (loading) return <div className="text-center py-20 text-gray-500 font-medium text-lg">Yuklanmoqda...</div>;
+  if (loading) return <div className="text-center py-20 text-gray-500 font-medium text-lg">{t("common.loading")}</div>;
 
   return (
     <div className="bg-gray-50 pb-32 min-h-screen font-sans">
@@ -486,24 +500,39 @@ function ProductList() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div className="text-center lg:text-left">
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight mb-8 leading-[1.1]">
-                  Sog'lig'ingiz uchun <br className="hidden lg:block" /> 
-                  <span className="text-green-600">tabiiy</span> yechimlar
+                  {t("hero.title")}
                 </h1>
+                <p className="text-lg text-gray-600 max-w-xl mx-auto lg:mx-0 mb-2">
+                  {t("hero.subtitle")}
+                </p>
                 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mt-12">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-stretch sm:items-center mt-12">
                   <button 
                     onClick={() => document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+                    className="group relative w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-200/60 hover:shadow-xl hover:shadow-green-200 active:scale-[0.98] overflow-hidden"
                   >
-                    Mahsulotlarni ko'rish
-                    <ChevronRight size={20} />
+                    <span className="relative z-10 flex items-center gap-2">
+                      {t("hero.viewProducts")}
+                      <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </button>
+
+                  {!isLoggedIn && (
+                    <Link
+                      href="/login"
+                      className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full font-semibold text-lg bg-white hover:bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+                    >
+                      <Sparkles size={18} className="text-amber-500 group-hover:rotate-12 transition-transform" />
+                      {t("hero.start")}
+                      <LogIn size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  )}
                 </div>
               </div>
-              <div className="relative mt-8 lg:mt-0 flex justify-center lg:justify-end">
+              <div className="relative mt-8 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
                 <img 
                   src="/asosiyrasm.png" 
-                  alt="Nuvita tabiiy yechimlar" 
+                  alt="Nuvita" 
                   className="w-full max-w-md lg:max-w-lg object-cover rounded-3xl shadow-2xl hover:scale-105 transition-transform duration-500 border border-gray-100" 
                 />
               </div>
@@ -521,16 +550,16 @@ function ProductList() {
         <div className="flex items-center justify-between mb-10">
           <div className="border-l-4 border-green-500 pl-4">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-              {searchQuery ? `"${searchQuery}" bo'yicha natijalar` : "Bizning mahsulotlar"}
+              {searchQuery ? `"${searchQuery}"` : t("categories.title")}
             </h2>
-            <p className="text-gray-500 mt-1 text-sm sm:text-base">Sifatli va sertifikatlangan mahsulotlar</p>
+            <p className="text-gray-500 mt-1 text-sm sm:text-base">{t("hero.feature2.desc")}</p>
           </div>
           <Link 
             href="/catalog"
             className="hidden sm:flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-semibold px-5 py-2.5 rounded-full transition-colors"
           >
             <Grid3X3 size={18} />
-            Katalog
+            {t("nav.catalog")}
           </Link>
         </div>
 
@@ -539,7 +568,7 @@ function ProductList() {
           <div>
             {filteredProducts.length === 0 ? (
               <p className="text-gray-500 italic bg-white p-6 rounded-xl shadow-sm border text-center">
-                Hech qanday mahsulot topilmadi.
+                {t("product.notFound")}
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -570,7 +599,7 @@ function ProductList() {
           <div>
             {categories.length === 0 && products.length === 0 ? (
               <p className="text-gray-500 italic bg-white p-6 rounded-xl shadow-sm border text-center">
-                Hozircha faol mahsulotlar mavjud emas.
+                {t("product.notFound")}
               </p>
             ) : (
               <>
@@ -594,7 +623,7 @@ function ProductList() {
                 {/* Products without category */}
                 {products.filter(p => !categories.some(c => c.id === p.categoryId)).length > 0 && (
                   <CategoryRow 
-                    category={{ id: 0, name: "Boshqa mahsulotlar", isActive: true }}
+                    category={{ id: 0, name: t("categories.all"), displayName: t("categories.all"), isActive: true }}
                     products={products.filter(p => !categories.some(c => c.id === p.categoryId))}
                     cartItems={cartItems}
                     onAddToCart={addToCart}
@@ -687,7 +716,7 @@ export default function Home() {
     <>
       {showSplash && <IntroScreen onComplete={() => setShowSplash(false)} />}
       <div className={showSplash ? 'opacity-0' : 'opacity-100 transition-opacity duration-1000'}>
-        <Suspense fallback={<div className="text-center py-20">Yuklanmoqda...</div>}>
+        <Suspense fallback={<div className="text-center py-20">...</div>}>
           <ProductList />
         </Suspense>
         <section id="contact">

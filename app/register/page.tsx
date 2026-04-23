@@ -7,11 +7,18 @@ import { API_BASE_URL } from "@/lib/api";
 import { getTelegramWebApp, isTelegramMiniApp } from "@/lib/telegram";
 import { CheckCircle, Lock, Phone, User, AlertCircle, Loader2 } from "lucide-react";
 
-interface TokenData {
+type TokenMode = "register" | "password-setup";
+
+interface RegisterTokenData {
   phone: string;
   fullName: string;
   telegramId: string;
   username: string;
+}
+
+interface PasswordTokenData {
+  phone: string;
+  telegramId: string;
 }
 
 function RegisterForm() {
@@ -25,37 +32,54 @@ function RegisterForm() {
   const [isTgMode, setIsTgMode] = useState(false);
   const [fullName, setFullName] = useState("");
   const [token, setToken] = useState<string | null>(null);
+  const [tokenMode, setTokenMode] = useState<TokenMode>("register");
   const [tokenError, setTokenError] = useState<string | null>(null);
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const initializeForm = async () => {
       setInitialLoading(true);
-      
+
       // Check for TG Mini App startapp parameter (token)
       if (isTelegramMiniApp()) {
         const webApp = getTelegramWebApp();
         webApp?.ready();
         webApp?.expand();
-        
+
         const startParam = webApp?.initDataUnsafe?.start_param;
-        
+
         if (startParam) {
-          // Token-based registration
           setToken(startParam);
           setIsTgMode(true);
-          
+
+          // pw_XXX → password-setup for an existing TG-registered user.
+          // other prefix → legacy new-user registration token.
+          const isPasswordMode = startParam.startsWith("pw_");
+          setTokenMode(isPasswordMode ? "password-setup" : "register");
+
           try {
-            const res = await axios.get<TokenData>(`${API_BASE_URL}/auth/register-token/${startParam}`);
-            setPhone(res.data.phone);
-            setFullName(res.data.fullName || '');
+            if (isPasswordMode) {
+              const res = await axios.get<PasswordTokenData>(
+                `${API_BASE_URL}/auth/password-token/${startParam}`,
+              );
+              setPhone(res.data.phone);
+            } else {
+              const res = await axios.get<RegisterTokenData>(
+                `${API_BASE_URL}/auth/register-token/${startParam}`,
+              );
+              setPhone(res.data.phone);
+              setFullName(res.data.fullName || "");
+            }
           } catch (err: any) {
-            console.error('Token validation error:', err);
-            setTokenError(err.response?.data?.message || "Havola yaroqsiz yoki muddati tugagan. Iltimos, botdan qaytadan /start bosing.");
+            console.error("Token validation error:", err);
+            setTokenError(
+              err.response?.data?.message ||
+                "Havola yaroqsiz yoki muddati tugagan. Iltimos, botdan qaytadan urinib ko'ring.",
+            );
           }
-          
+
           setInitialLoading(false);
           return;
         }
@@ -65,13 +89,13 @@ function RegisterForm() {
       const mode = searchParams.get("mode");
       const qPhone = searchParams.get("phone");
       const qFullName = searchParams.get("fullName");
-      
+
       if (mode === "register" || qPhone) {
         setIsTgMode(true);
         if (qPhone) setPhone(qPhone);
         if (qFullName) setFullName(decodeURIComponent(qFullName));
       }
-      
+
       setInitialLoading(false);
     };
 
@@ -95,15 +119,18 @@ function RegisterForm() {
 
     try {
       let res;
-      
-      if (token) {
-        // Token-based registration (new secure way)
+
+      if (token && tokenMode === "password-setup") {
+        res = await axios.post(`${API_BASE_URL}/auth/set-password-with-token`, {
+          token,
+          password,
+        });
+      } else if (token) {
         res = await axios.post(`${API_BASE_URL}/auth/register-with-token`, {
           token,
           password,
         });
       } else {
-        // Fallback: Old query param way
         const cleanPhone = phone.replace(/\s+/g, "");
         res = await axios.post(`${API_BASE_URL}/auth/register`, {
           number: cleanPhone,
@@ -114,29 +141,29 @@ function RegisterForm() {
         });
       }
 
-      // Save tokens
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("refreshToken", res.data.refreshToken);
-      
+      if (res.data.accessToken) {
+        localStorage.setItem("accessToken", res.data.accessToken);
+        localStorage.setItem("refreshToken", res.data.refreshToken);
+      }
+
       setSuccess(true);
 
-      // If in TG Mini App, redirect to main page after delay
       if (isTelegramMiniApp()) {
         const webApp = getTelegramWebApp();
         webApp?.HapticFeedback?.notificationOccurred("success");
       }
-      
-      // Force reload to home page for both web and mini app
+
       setTimeout(() => {
         window.location.href = "/";
       }, 1500);
-
     } catch (err: any) {
       console.error(err);
       if (err.response?.status === 409) {
         const message = err.response?.data?.message || "";
         if (message.includes("Telegram")) {
-          setError("Bu Telegram hisob allaqachon ro'yxatdan o'tgan. Iltimos, /start bosib qaytadan urinib ko'ring.");
+          setError(
+            "Bu Telegram hisob allaqachon ro'yxatdan o'tgan. Iltimos, /start bosib qaytadan urinib ko'ring.",
+          );
         } else {
           setError("Bu raqam orqali allaqachon ro'yxatdan o'tilgan.");
         }
@@ -150,7 +177,6 @@ function RegisterForm() {
     }
   };
 
-  // Initial loading state
   if (initialLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col justify-center items-center px-6 py-12">
@@ -160,7 +186,6 @@ function RegisterForm() {
     );
   }
 
-  // Token error state
   if (tokenError) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-red-50 to-white flex flex-col justify-center items-center px-6 py-12">
@@ -168,12 +193,8 @@ function RegisterForm() {
           <div className="bg-red-100 rounded-full p-5 mb-6 mx-auto w-fit">
             <AlertCircle className="w-12 h-12 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            Xatolik
-          </h2>
-          <p className="text-gray-600 text-sm leading-relaxed">
-            {tokenError}
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 mb-3">Xatolik</h2>
+          <p className="text-gray-600 text-sm leading-relaxed">{tokenError}</p>
           {isTelegramMiniApp() && (
             <button
               onClick={() => getTelegramWebApp()?.close()}
@@ -187,20 +208,23 @@ function RegisterForm() {
     );
   }
 
-  // Success state
   if (success) {
+    const successTitle =
+      tokenMode === "password-setup"
+        ? "Parol o'rnatildi!"
+        : "Muvaffaqiyatli!";
+    const successBody =
+      tokenMode === "password-setup"
+        ? "Endi saytga kirib foydalanishingiz mumkin."
+        : "Ro'yxatdan o'tish yakunlandi.";
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col justify-center items-center px-6 py-12">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
           <div className="bg-green-100 rounded-full p-5 mb-6 mx-auto w-fit">
             <CheckCircle className="w-12 h-12 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Muvaffaqiyatli!
-          </h2>
-          <p className="text-gray-600 text-sm">
-            Ro'yxatdan o'tish yakunlandi.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">{successTitle}</h2>
+          <p className="text-gray-600 text-sm">{successBody}</p>
           <p className="text-green-600 text-sm font-medium mt-2">
             Asosiy sahifaga yo'naltirilmoqda...
           </p>
@@ -209,31 +233,45 @@ function RegisterForm() {
     );
   }
 
+  const title =
+    tokenMode === "password-setup"
+      ? "Sayt uchun parol o'rnatish"
+      : isTgMode
+        ? "Parol o'rnatish"
+        : "Ro'yxatdan o'tish";
+  const subtitle =
+    tokenMode === "password-setup"
+      ? "Brauzer orqali saytga kirish uchun parol yarating"
+      : isTgMode
+        ? "Saytga kirish uchun parol yarating"
+        : "Yangi hisob yaratish";
+  const submitLabel =
+    tokenMode === "password-setup" || isTgMode
+      ? "Parolni saqlash"
+      : "Ro'yxatdan o'tish";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-white flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-green-200">
             <Lock className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-            {isTgMode ? "Parol o'rnatish" : "Ro'yxatdan o'tish"}
+            {title}
           </h2>
-          <p className="mt-2 text-sm text-gray-500">
-            {isTgMode 
-              ? "Saytga kirish uchun parol yarating" 
-              : "Yangi hisob yaratish"}
-          </p>
+          <p className="mt-2 text-sm text-gray-500">{subtitle}</p>
         </div>
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-100 p-6 sm:p-8 border border-gray-100">
           <form onSubmit={handleRegisterSubmit} className="space-y-5">
-            {/* Phone number - readonly in TG mode */}
             <div>
-              <label htmlFor="phone" className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+              <label
+                htmlFor="phone"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2"
+              >
                 <Phone size={16} className="text-green-600" />
                 Telefon raqam
               </label>
@@ -246,12 +284,11 @@ function RegisterForm() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+998 90 123 45 67"
-                className={`block w-full rounded-xl px-4 py-3.5 text-base text-gray-900 border-2 placeholder:text-gray-400 focus:outline-none focus:ring-0 transition-colors ${isTgMode ? 'bg-gray-50 border-gray-200 text-gray-600 cursor-not-allowed' : 'bg-white border-gray-200 focus:border-green-500'}`}
+                className={`block w-full rounded-xl px-4 py-3.5 text-base text-gray-900 border-2 placeholder:text-gray-400 focus:outline-none focus:ring-0 transition-colors ${isTgMode ? "bg-gray-50 border-gray-200 text-gray-600 cursor-not-allowed" : "bg-white border-gray-200 focus:border-green-500"}`}
               />
             </div>
 
-            {/* Full name - show in TG mode if available */}
-            {fullName && (
+            {fullName && tokenMode !== "password-setup" && (
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
                   <User size={16} className="text-green-600" />
@@ -266,9 +303,11 @@ function RegisterForm() {
               </div>
             )}
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+              <label
+                htmlFor="password"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2"
+              >
                 <Lock size={16} className="text-green-600" />
                 Parol
               </label>
@@ -284,9 +323,11 @@ function RegisterForm() {
               />
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2"
+              >
                 <Lock size={16} className="text-green-600" />
                 Parolni tasdiqlang
               </label>
@@ -302,14 +343,12 @@ function RegisterForm() {
               />
             </div>
 
-            {/* Error message */}
             {error && (
               <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3">
                 <p className="text-red-600 text-sm font-medium">{error}</p>
               </div>
             )}
 
-            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
@@ -323,18 +362,18 @@ function RegisterForm() {
               ) : (
                 <>
                   <CheckCircle size={20} />
-                  {isTgMode ? "Parolni saqlash" : "Ro'yxatdan o'tish"}
+                  {submitLabel}
                 </>
               )}
             </button>
           </form>
 
-          {/* Info text for TG mode */}
           {isTgMode && (
             <div className="mt-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
               <p className="text-center text-xs text-blue-700">
-                <span className="font-medium">💡 Eslatma:</span> Bu parol saytga kirishda ishlatiladi.
-                Telegram orqali avtomatik kirasiz.
+                <span className="font-medium">💡 Eslatma:</span> Bu parol
+                saytga brauzer orqali kirishda ishlatiladi. Telegram orqali
+                avtomatik kirasiz.
               </p>
             </div>
           )}
@@ -346,11 +385,13 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-green-600 animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center">
+          <Loader2 className="w-10 h-10 text-green-600 animate-spin" />
+        </div>
+      }
+    >
       <RegisterForm />
     </Suspense>
   );

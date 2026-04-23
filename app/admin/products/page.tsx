@@ -269,6 +269,24 @@ export default function ProductsPage() {
 
   const saveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard against implicit form submission (e.g. user presses Enter in an
+    // input on an earlier step). Without this, a single Enter key can create
+    // the product before the admin filled in translations/details.
+    if (step !== "details") {
+      // Only advance if the current step is valid, otherwise stay put.
+      if (step === "photos") {
+        if (!editingId && files.length === 0 && existingPhotos.length === 0) {
+          return;
+        }
+        setStep("main");
+      } else if (step === "main") {
+        if (!name.trim() || !category || !(price > 0)) return;
+        setStep("details");
+      }
+      return;
+    }
+
     if (!name.trim()) {
       setStep("main");
       alert("Mahsulot nomi majburiy");
@@ -279,7 +297,7 @@ export default function ProductsPage() {
       alert("Kategoriya tanlanmagan!");
       return;
     }
-    if (!editingId && files.length === 0) {
+    if (!editingId && files.length === 0 && existingPhotos.length === 0) {
       setStep("photos");
       alert("Kamida 1 ta rasm yuklang!");
       return;

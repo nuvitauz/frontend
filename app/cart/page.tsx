@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ArrowLeft } from "lucide-react";
 import { getTelegramWebApp, isTelegramMiniApp } from "@/lib/telegram";
+import { useI18n } from "@/lib/i18n";
 
 interface Product {
   productId: string;
   name: string;
+  displayName?: string;
   /** API: Prisma `photos` — asosiy rasm odatda birinchi element */
   photos: string[];
   price: number;
@@ -35,6 +37,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     // TG BackButton
@@ -100,7 +103,7 @@ export default function CartPage() {
   };
 
   const clearCart = async () => {
-    if (confirm("Savatni tozalashni tasdiqlaysizmi?")) {
+    if (confirm(t("cart.clearAll") + "?")) {
       try {
         const res = await axios.delete(`${API_BASE_URL}/cart/clear`, {
           headers: { Authorization: "Bearer " + token }
@@ -121,7 +124,7 @@ export default function CartPage() {
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-3 border-gray-200 border-t-green-600 rounded-full animate-spin"></div>
-          <span className="text-gray-500 text-sm">Yuklanmoqda...</span>
+          <span className="text-gray-500 text-sm">{t("common.loading")}</span>
         </div>
       </div>
     );
@@ -138,7 +141,7 @@ export default function CartPage() {
             </button>
             <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <ShoppingBag size={20} className="text-green-600" />
-              Savat
+              {t("cart.title")}
               {cart && cart.count > 0 && (
                 <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
                   {cart.count}
@@ -148,7 +151,7 @@ export default function CartPage() {
           </div>
           {cart && cart.items.length > 0 && (
             <button onClick={clearCart} className="text-xs font-medium text-red-500 hover:text-red-600">
-              Tozalash
+              {t("cart.clearAll")}
             </button>
           )}
         </div>
@@ -160,10 +163,10 @@ export default function CartPage() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <ShoppingBag size={28} className="text-gray-300" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Savat bo&apos;sh</h2>
-            <p className="text-sm text-gray-500 mb-6">Hali mahsulot qo&apos;shilmagan</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t("cart.empty")}</h2>
+            <p className="text-sm text-gray-500 mb-6">{t("cart.emptyDesc")}</p>
             <Link href="/" className="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition">
-              Xarid qilish
+              {t("cart.goShopping")}
             </Link>
           </div>
         ) : (
@@ -179,11 +182,11 @@ export default function CartPage() {
                         <img 
                           src={`${API_BASE_URL}${item.product.photos[0]}`} 
                           className="w-full h-full object-cover" 
-                          alt={item.product.name} 
+                          alt={item.product.displayName || item.product.name} 
                         />
                       ) : (
                         <div className="w-full h-full flex justify-center items-center text-xs text-gray-400">
-                          Rasm yo&apos;q
+                          —
                         </div>
                       )}
                     </div>
@@ -194,10 +197,10 @@ export default function CartPage() {
                         href={"/" + encodeURIComponent(item.product.name)} 
                         className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight mb-1"
                       >
-                        {item.product.name}
+                        {item.product.displayName || item.product.name}
                       </Link>
                       <p className="text-xs text-gray-500 mb-2">
-                        {item.product.price.toLocaleString()} so&apos;m / dona
+                        {item.product.price.toLocaleString()} {t("common.uzs")}
                       </p>
                       
                       {/* Controls Row */}
@@ -224,7 +227,7 @@ export default function CartPage() {
                         {/* Price & Delete */}
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-gray-900 text-sm">
-                            {(item.product.price * item.productCount).toLocaleString()} so&apos;m
+                            {(item.product.price * item.productCount).toLocaleString()} {t("common.uzs")}
                           </span>
                           <button 
                             onClick={() => removeItem(item.id)} 
@@ -245,7 +248,7 @@ export default function CartPage() {
               href="/" 
               className="block text-center text-sm text-green-600 font-medium py-3 hover:text-green-700"
             >
-              + Yana mahsulot qo&apos;shish
+              + {t("cart.goShopping")}
             </Link>
           </>
         )}
@@ -257,19 +260,19 @@ export default function CartPage() {
           <div className="max-w-3xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-xs text-gray-500">Jami ({cart.count} ta mahsulot)</p>
-                <p className="text-xl font-bold text-gray-900">{cart.summ.toLocaleString()} so&apos;m</p>
+                <p className="text-xs text-gray-500">{t("cart.total")} ({cart.count})</p>
+                <p className="text-xl font-bold text-gray-900">{cart.summ.toLocaleString()} {t("common.uzs")}</p>
               </div>
               <button 
                 onClick={proceedToCheckout} 
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-6 py-3 rounded-xl font-semibold text-sm transition"
               >
-                Buyurtma berish
+                {t("cart.checkout")}
                 <ArrowRight size={18} />
               </button>
             </div>
             <p className="text-xs text-gray-400 text-center">
-              Yetkazib berish narxi keyingi sahifada hisoblanadi
+              {t("cart.delivery")}
             </p>
           </div>
         </div>
