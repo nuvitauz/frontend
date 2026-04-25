@@ -9,7 +9,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ExternalLink, KeyRound, Phone, Loader2 } from "lucide-react";
 
 const TG_BOT =
-  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "nuvita_testbot";
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "nuvitauzbot";
 const TG_BOT_HANDLE = TG_BOT.startsWith("@") ? TG_BOT : `@${TG_BOT}`;
 const TG_BOT_URL = `https://t.me/${TG_BOT.replace(/^@/, "")}`;
 
