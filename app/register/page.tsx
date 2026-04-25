@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { API_BASE_URL } from "@/lib/api";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -13,8 +13,15 @@ const TG_BOT =
 const TG_BOT_HANDLE = TG_BOT.startsWith("@") ? TG_BOT : `@${TG_BOT}`;
 const TG_BOT_URL = `https://t.me/${TG_BOT.replace(/^@/, "")}`;
 
+/** Backend `normalizeUzbekPhone` bilan mos */
+function normalizeUzbekPhoneParam(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("998")) return `+${d}`;
+  if (d.length === 9) return `+998${d}`;
+  return "";
+}
+
 function RegisterFormInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const phoneParam = searchParams.get("phone") || "";
 
@@ -22,14 +29,7 @@ function RegisterFormInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const cleanPhone = phoneParam.startsWith("+998") ? phoneParam : "";
-
-  useEffect(() => {
-    if (!cleanPhone) return;
-    void axios
-      .post(`${API_BASE_URL}/auth/pending-site-phone`, { number: cleanPhone })
-      .catch(() => undefined);
-  }, [cleanPhone]);
+  const cleanPhone = normalizeUzbekPhoneParam(phoneParam);
 
   const onCodeChange = (v: string) => {
     setCode(v.replace(/\D/g, "").slice(0, 6));
@@ -88,7 +88,7 @@ function RegisterFormInner() {
         Ro&apos;yxatdan o&apos;tish
       </h1>
       <p className="mt-1 text-sm text-gray-500">
-        Bu raqam saytda saqlangan. Endi botda kontakt ulang — kod shu yerga.
+        Avval botda kontakt ulang (shu raqam), keyin shu yerga kodni kiriting.
       </p>
 
       <div className="mt-6 flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
@@ -102,7 +102,8 @@ function RegisterFormInner() {
         </p>
         <p className="text-sm text-gray-700 leading-relaxed">
           /start bosing, keyin <strong className="text-gray-800">shu telefon</strong>{" "}
-          raqamini kontakt sifatida yuboring — kod shaxsiy xabarda keladi.
+          raqamini kontakt qilib yuboring — kod shaxsiy xabarda keladi (saytga
+          kirmasdan oldin bot).
         </p>
         <a
           href={TG_BOT_URL}
