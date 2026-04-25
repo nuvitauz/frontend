@@ -18,8 +18,6 @@ import {
   ExternalLink,
   Loader2,
   LogOut,
-  Lock,
-  KeyRound,
   ShoppingBag,
   Heart,
   Sparkles,
@@ -50,7 +48,6 @@ interface UserProfile {
   lang: string;
   role?: "USER" | "ADMIN" | "COURIER";
   profileComplete: boolean;
-  hasPassword?: boolean;
   createdAt?: string;
 }
 
@@ -68,13 +65,6 @@ export default function ProfilePage() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [ordersCount, setOrdersCount] = useState<number | null>(null);
   const [savedCount, setSavedCount] = useState<number | null>(null);
-
-  const [showPwSetup, setShowPwSetup] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwLoading, setPwLoading] = useState(false);
-  const [pwError, setPwError] = useState("");
-  const [pwSuccess, setPwSuccess] = useState(false);
 
   const [saveError, setSaveError] = useState("");
   const [saveOk, setSaveOk] = useState(false);
@@ -223,43 +213,6 @@ export default function ProfilePage() {
       setSaveError(error.response?.data?.message || "Xatolik yuz berdi");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwError("");
-    if (newPassword.length < 6) {
-      setPwError("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPwError("Parollar mos kelmadi");
-      return;
-    }
-    setPwLoading(true);
-    try {
-      await axios.post(
-        `${API_BASE_URL}/auth/set-password`,
-        { password: newPassword },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setPwSuccess(true);
-      setProfile((prev) => (prev ? { ...prev, hasPassword: true } : prev));
-      setNewPassword("");
-      setConfirmPassword("");
-      setTimeout(() => {
-        setShowPwSetup(false);
-        setPwSuccess(false);
-      }, 1200);
-    } catch (err: any) {
-      console.error(err);
-      setPwError(
-        err.response?.data?.message ||
-          "Xatolik yuz berdi. Qaytadan urinib ko'ring.",
-      );
-    } finally {
-      setPwLoading(false);
     }
   };
 
@@ -521,131 +474,6 @@ export default function ProfilePage() {
                     )}
                     Ulash
                   </button>
-                )}
-              </div>
-            )}
-
-            {/* Password row */}
-            {profile?.number && (
-              <div className="px-5 sm:px-6 py-4">
-                {!showPwSetup ? (
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                        profile.hasPassword
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-amber-50 text-amber-600"
-                      }`}
-                    >
-                      <KeyRound size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm">
-                        Sayt paroli
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {profile.hasPassword
-                          ? "Brauzer orqali kirish faol"
-                          : "Brauzer orqali kirish uchun o'rnating"}
-                      </p>
-                    </div>
-                    {profile.hasPassword ? (
-                      <button
-                        onClick={() => {
-                          setShowPwSetup(true);
-                          setPwError("");
-                          setPwSuccess(false);
-                        }}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <Edit2 size={12} />
-                        Yangilash
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setShowPwSetup(true)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
-                      >
-                        <Lock size={12} />
-                        O&apos;rnatish
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleSetPassword} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <KeyRound size={16} className="text-amber-500" />
-                        <p className="font-semibold text-gray-900 text-sm">
-                          {profile.hasPassword
-                            ? "Parolni yangilash"
-                            : "Parol o'rnatish"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowPwSetup(false);
-                          setPwError("");
-                          setPwSuccess(false);
-                          setNewPassword("");
-                          setConfirmPassword("");
-                        }}
-                        className="text-gray-400 hover:text-gray-600 w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Yangi parol (kamida 6 ta belgi)"
-                        className="w-full bg-gray-50 border border-transparent focus:border-amber-300 focus:ring-2 focus:ring-amber-400/20 focus:bg-white rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                        required
-                        minLength={6}
-                        autoFocus
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Parolni tasdiqlang"
-                        className="w-full bg-gray-50 border border-transparent focus:border-amber-300 focus:ring-2 focus:ring-amber-400/20 focus:bg-white rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                        required
-                      />
-                    </div>
-                    {pwError && (
-                      <p className="text-xs text-red-600 flex items-center gap-1.5">
-                        <AlertTriangle size={12} /> {pwError}
-                      </p>
-                    )}
-                    {pwSuccess && (
-                      <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-semibold">
-                        <Check size={12} /> Parol saqlandi
-                      </p>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={pwLoading}
-                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold py-3 rounded-xl shadow-md shadow-amber-200 transition-all disabled:opacity-60"
-                    >
-                      {pwLoading ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin" />
-                          Saqlanmoqda…
-                        </>
-                      ) : (
-                        <>
-                          <Save size={16} />
-                          Parolni saqlash
-                        </>
-                      )}
-                    </button>
-                  </form>
                 )}
               </div>
             )}
