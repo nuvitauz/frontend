@@ -157,6 +157,16 @@ export default function LoginPage() {
       );
       const { flow } = res.data;
       if (flow === "NEW_USER") {
+        try {
+          await axios.post(`${API_BASE_URL}/auth/pending-site-phone`, {
+            number: cleanPhone,
+          });
+        } catch {
+          setError(
+            "Raqamni saqlab bo'lmadi. Qayta urinib ko'ring yoki boshqa raqam kiriting.",
+          );
+          return;
+        }
         router.push(`/register?phone=${encodeURIComponent(cleanPhone)}`);
         return;
       }

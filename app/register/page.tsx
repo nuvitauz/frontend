@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -23,6 +23,13 @@ function RegisterFormInner() {
   const [error, setError] = useState("");
 
   const cleanPhone = phoneParam.startsWith("+998") ? phoneParam : "";
+
+  useEffect(() => {
+    if (!cleanPhone) return;
+    void axios
+      .post(`${API_BASE_URL}/auth/pending-site-phone`, { number: cleanPhone })
+      .catch(() => undefined);
+  }, [cleanPhone]);
 
   const onCodeChange = (v: string) => {
     setCode(v.replace(/\D/g, "").slice(0, 6));
@@ -81,7 +88,7 @@ function RegisterFormInner() {
         Ro&apos;yxatdan o&apos;tish
       </h1>
       <p className="mt-1 text-sm text-gray-500">
-        Yangi akkaunt — avval botda telefonni ulang
+        Bu raqam saytda saqlangan. Endi botda kontakt ulang — kod shu yerga.
       </p>
 
       <div className="mt-6 flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
@@ -94,8 +101,8 @@ function RegisterFormInner() {
           1. Botda /start
         </p>
         <p className="text-sm text-gray-700 leading-relaxed">
-          Kontaktingizni yuboring — kod shaxsiy xabarda keladi (saytdagi shu
-          raqam bilan).
+          /start bosing, keyin <strong className="text-gray-800">shu telefon</strong>{" "}
+          raqamini kontakt sifatida yuboring — kod shaxsiy xabarda keladi.
         </p>
         <a
           href={TG_BOT_URL}
